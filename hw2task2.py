@@ -1,3 +1,5 @@
+from collections import UserDict
+
 class Field:
     def __init__(self, value):
         self.value = value
@@ -6,13 +8,21 @@ class Field:
         return str(self.value)
 
 class Name(Field):
-    pass
+    def __init__(self, value):
+        if value:   
+            self.value = value
+        else:
+            raise ValueError("Name field is required")
 
 class Phone(Field):
     def __init__(self, value):
-        if len(value) != 10 or not value.isdigit():
-            raise ValueError("Phone number must be 10 digits.")
-        super().__init__(value)
+        if self.validate_phone(value):
+            self.value = value
+        else:
+            print("Invalid phone number: must be 10 digits")
+    
+    def validate_phone(self, phone):
+        return len(str(phone)) == 10
 
 class Record:
     def __init__(self, name):
@@ -22,96 +32,56 @@ class Record:
     def add_phone(self, phone):
         self.phones.append(Phone(phone))
 
-    def remove_phone(self, phone):
-        self.phones = [p for p in self.phones if p.value != phone]
-
     def edit_phone(self, old_phone, new_phone):
-        for p in self.phones:
-            if p.value == old_phone:
-                p.value = new_phone
-                return
-        raise ValueError("Phone number not found.")
+        for phone in self.phones:
+            if phone.value == old_phone:
+                phone.value = new_phone
 
-    def find_phone(self, phone):
-        for p in self.phones:
-            if p.value == phone:
-                return p
+    def find_phone(self, phone_number):
+        for phone in self.phones:
+            if phone.value == phone_number:
+                return phone
         return None
+    
+    def remove_phone(self, phone_number):
+        for phone in self.phones:
+            if phone.value == phone_number:
+                self.phones.remove(phone)
+
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(str(p) for p in self.phones)}"
+        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
 
-def input_error(func):
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except ValueError:
-            return "Input error: Invalid value."
-        except KeyError:
-            return "Input error: Key not found."
-    return inner
-
-class AddressBook:
-    def __init__(self):
-        self.data = {}
-
-    @input_error
+class AddressBook(UserDict):
     def add_record(self, record):
         self.data[record.name.value] = record
-
-    @input_error
+    
     def find(self, name):
         return self.data.get(name)
-
-    @input_error
+    
     def delete(self, name):
-        if name in self.data:
-            del self.data[name]
+        del self.data[name]
 
+def main(): 
+    book = AddressBook()
 
-def parse_input(user_input):
-    cmd, *args = user_input.split()
-    cmd = cmd.strip().lower()
-    return cmd, args
+    john_record = Record("John")
+    john_record.add_phone("1234567890")
+    john_record.add_phone("5555555555")
+    book.add_record(john_record)
+    jane_record = Record("Jane")
+    jane_record.add_phone("9876543210")
+    book.add_record(jane_record)
 
+    for name, record in book.data.items():
+        print(record)
 
-def main():
-    contacts = AddressBook()
-    print("Welcome to the assistant bot!")
-    while True:
-        user_input = input("Enter a command: ")
-        command, args = parse_input(user_input)
-
-        if command in ["close", "exit"]:
-            print("Goodbye!")
-            break
-        elif command == "hello":
-            print("How can I help you?")
-        elif command == "add":
-            name, phone = args
-            record = Record(name)
-            record.add_phone(phone)
-            print(contacts.add_record(record))
-        elif command == "change":
-            name, phone = args
-            record = contacts.find(name)
-            if record:
-                record.edit_phone(record.phones[0].value, phone)
-                print("Contact updated.")
-            else:
-                print("Contact not found.")
-        elif command == "phone":
-            name = args[0]
-            record = contacts.find(name)
-            if record:
-                print(record.phones[0])
-            else:
-                print("Contact not found.")
-        elif command == "all":
-            print(contacts.data)
-        else:
-            print("Invalid command.")
-
+    john = book.find("John")
+    john.edit_phone("1234567890", "1112223333")
+    print(john) 
+    found_phone = john.find_phone("5555555555")
+    print(f"{john.name}: {found_phone}")  
+    book.delete("Jane")
 
 if __name__ == "__main__":
     main()
